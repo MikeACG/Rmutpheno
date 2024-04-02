@@ -55,6 +55,19 @@ maf2rnaFlanks <- function(mafdir, .chr, cohort, .vartype, gtfdir, ws, minmut) {
     ]
     mafdt <- mafdt[txmut >= minmut]
 
+    if (nrow(mafdt) == 0L) {
+
+        flankdt <- data.table::data.table(
+            mutid = integer(0),
+            transcript_id = character(0),
+            start = integer(0),
+            end = integer(0)
+        )
+
+        return(flankdt)
+
+    }
+
     # get exon level gtf
     gtfdb <- arrow::open_dataset(gtfdir)
     gtfdt <- gtfdb %>% 
