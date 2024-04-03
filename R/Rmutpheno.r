@@ -82,7 +82,7 @@ maf2rnaFlanks <- function(mafdir, .chr, cohort, .vartype, gtfdir, ws, minmut) {
 }
 
 #' @export
-flankdt2pmutdt <- function(.chr, flankdt, rmutmod, .vartype, vardir, phenodir, phenoCol) {
+flankdt2pmutdt <- function(.chr, flankdt, rmutmod, .vartype, vardir, phenodir, phenocol) {
 
     nflank <- floor(Rmutmod::kGet(rmutmod) / 2)
     kmerdt <- Rmutmod::ranges2kmerdt(
@@ -113,7 +113,7 @@ flankdt2pmutdt <- function(.chr, flankdt, rmutmod, .vartype, vardir, phenodir, p
 
     annotateVartype(pmutdt, vardir, .chr)
     pmutdt <- pmutdt[vartype == .vartype]
-    annotatePheno(pmutdt, phenodir, .chr, phenoCol)
+    annotatePheno(pmutdt, phenodir, .chr, phenocol)
 
     # make sure all sites of each transcript have non-missing phenotype
     pmutdt[
@@ -152,12 +152,12 @@ annotateVartype <- function(pmutdt, vardir, .chr) {
 
 }
 
-annotatePheno <- function(pmutdt, phenodir, .chr, phenoCol) {
+annotatePheno <- function(pmutdt, phenodir, .chr, phenocol) {
 
     phenodb <- arrow::open_dataset(phenodir)
     phenodt <- phenodb %>%
         dplyr::filter(seqnames == .chr) %>%
-        dplyr::select(dplyr::all_of(c("position.abs", "transcript_id", "wt", "snp", phenoCol))) %>%
+        dplyr::select(dplyr::all_of(c("position.abs", "transcript_id", "wt", "snp", phenocol))) %>%
         dplyr::collect()
     names(phenodt)[ncol(phenodt)] <- "pheno"
 
@@ -221,7 +221,7 @@ phenoPvalue <- function(simdt, mafdir, cohort, .vartype, phenodir, phenocol) {
     phenodb <- arrow::open_dataset(phenodir)
     phenodt <- phenodb %>%
         dplyr::filter(seqnames == .chr, transcript_id %in% utx) %>%
-        dplyr::select(dplyr::all_of(c("position.abs", "transcript_id", "wt", "snp", phenoCol))) %>%
+        dplyr::select(dplyr::all_of(c("position.abs", "transcript_id", "wt", "snp", phenocol))) %>%
         dplyr::collect()
     names(phenodt)[ncol(phenodt)] <- "pheno"
 
