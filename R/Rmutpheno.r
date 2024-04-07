@@ -366,8 +366,6 @@ prrocWrapper <- function(score, setlabel, curveType) {
 
 score2auc <- function(sdt, setdt, aggcols) {
 
-    data.table::setorder(sdt, "score")
-
     # calculate the observed aucs per gene set
     sdt[, "setlabel" := NA_integer_]
     adt <- list()
