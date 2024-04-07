@@ -364,7 +364,7 @@ prrocWrapper <- function(score, setlabel, curveType) {
 
 }
 
-score2auc <- function(sdt, setdt, revScore, aggcols) {
+score2auc <- function(sdt, setdt, aggcols) {
 
     if (revScore) sdt[, "score" := -score]
     data.table::setorder(sdt, "score")
@@ -410,16 +410,15 @@ score2auc <- function(sdt, setdt, revScore, aggcols) {
         value.name = "auc"
     )
     
-    if (revScore) sdt[, "score" := -score]
     sdt[, "setlabel" := NULL]
     return(adt)
 
 }
 
 #' @export
-simAUC <- function(simsdt, setdt, revScore = TRUE) {
+simAUC <- function(simsdt, setdt) {
 
-    simadt <- score2auc(simsdt, setdt, revScore, c("sim", "scoreType"))
+    simadt <- score2auc(simsdt, setdt, c("sim", "scoreType"))
     simadt[, ':=' ("TP" = NULL, "TN" = NULL)]
 
     return(simadt)
@@ -427,13 +426,13 @@ simAUC <- function(simsdt, setdt, revScore = TRUE) {
 }
 
 #' @export
-aucPvalue <- function(scoredt, simadt, setdt, revScore = TRUE) {
+aucPvalue <- function(scoredt, simadt, setdt) {
 
     # get number of simulations
     nsim <- max(simadt$sim)
 
     # get AUCs of observed scores
-    obsdt <- score2auc(scoredt, setdt, revScore, "scoreType")
+    obsdt <- score2auc(scoredt, setdt, "scoreType")
 
     # build pvalue table by comparing obesrved AUCs against simulations
     simadt[
