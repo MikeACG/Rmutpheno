@@ -34,26 +34,34 @@ mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
 
 }
 
-#' @export
-maf2rnaFlanks <- function(mafdir, .chr, cohort, .vartype, gtfdir, ws, minmut) {
+mafLoad <- function(mafdb, .chr, cohort, .vartype, flaggedMuts, minmut) {
 
-    # load mutations of required type
-    mafdb <- arrow::open_dataset(mafdir)
-    mafdt <- mafdb %>% 
-        dplyr::filter(
-            Cohort == cohort,
-            Chromosome == .chr,
-            !is.na(Transcript_ID),
-            Variant_Classification == .vartype
-        ) %>%
-        dplyr::select(dplyr::all_of(c("Start_Position", "Transcript_ID"))) %>%
+    q <- mafdb %>% dplyr::filter(Cohort == cohort, Chromosome == .chr, !is.na(Transcript_ID))
+
+    if (.vartype[1] != "all") q <- q %>% dplyr::filter(Variant_Classification %in% .vartype) 
+    if (flaggedMuts == "no") q <- q %>% dplyr::filter(modelExclude == FALSE) 
+
+    mafdt <- q %>%
+        dplyr::select(dplyr::all_of(c("Start_Position", "Transcript_ID", "modelExclude", "Variant_Classification"))) %>%
         dplyr::collect()
+
     mafdt[
         mafdt[, list("txmut" = .N), by = "Transcript_ID"],
         "txmut" := i.txmut,
         on = "Transcript_ID"
     ]
     mafdt <- mafdt[txmut >= minmut]
+
+    return(mafdt)
+
+}
+
+#' @export
+maf2rnaFlanks <- function(mafdir, .chr, cohort, .vartype, gtfdir, ws, minmut, flaggedMuts) {
+
+    # load mutations of required type
+    mafdb <- arrow::open_dataset(mafdir)
+    mafdt <- mafLoad(mafdb, .chr, cohort, .vartype, flaggedMuts, minmut)
 
     if (nrow(mafdt) == 0L) {
 
