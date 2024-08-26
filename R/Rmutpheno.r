@@ -36,34 +36,17 @@ mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
 
 }
 
-mafLoad <- function(mafdb, .chr, cohort, .vartype, flaggedMuts, minmut) {
+#' @export
+maf2rnaFlanks <- function(mafdb, .chr, cohort, .vartype, gtfdb, ws, minmut, flaggedMuts) {
 
-    q <- mafdb %>% dplyr::filter(Cohort == cohort, Chromosome == .chr, !is.na(Transcript_ID))
-
-    if (.vartype[1] != "all") q <- q %>% dplyr::filter(Variant_Classification %in% .vartype) 
-    if (flaggedMuts == "no") q <- q %>% dplyr::filter(modelExclude == FALSE) 
-
-    mafdt <- q %>%
-        dplyr::select(dplyr::all_of(c("Start_Position", "Transcript_ID"))) %>%
-        dplyr::collect()
-
+    # load mutations of required type
+    mafdt <- Rmutmod::mafLoad(mafdb, c("Start_Position", "Transcript_ID"), .chr, cohort, .vartype, flaggedMuts)
     mafdt[
         mafdt[, list("txmut" = .N), by = "Transcript_ID"],
         "txmut" := i.txmut,
         on = "Transcript_ID"
     ]
     mafdt <- mafdt[txmut >= minmut]
-
-    return(mafdt)
-
-}
-
-#' @export
-maf2rnaFlanks <- function(mafdir, .chr, cohort, .vartype, gtfdir, ws, minmut, flaggedMuts) {
-
-    # load mutations of required type
-    mafdb <- arrow::open_dataset(mafdir)
-    mafdt <- mafLoad(mafdb, .chr, cohort, .vartype, flaggedMuts, minmut)
 
     if (nrow(mafdt) == 0L) {
 
@@ -79,7 +62,6 @@ maf2rnaFlanks <- function(mafdir, .chr, cohort, .vartype, gtfdir, ws, minmut, fl
     }
 
     # get exon level gtf
-    gtfdb <- arrow::open_dataset(gtfdir)
     gtfdt <- gtfdb %>% 
         dplyr::filter(Chromosome == .chr, transcript_id %in% unique(mafdt$Transcript_ID)) %>%
         dplyr::select(dplyr::all_of(c("Chromosome", "Feature", "Start_Position", "End_Position", "Strand", "transcript_id"))) %>%
