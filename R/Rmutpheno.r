@@ -7,7 +7,8 @@ mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
     mwRanges <- GenomicRanges::GRanges(
         mafdt$Transcript_ID,
         IRanges::IRanges(mafdt$Start_Position - ws, mafdt$Start_Position + ws),
-        mutid = 1:nrow(mafdt) # identifier to track which resulting ranges correspond to each mutation
+        mutid = 1:nrow(mafdt), # identifier to track which resulting ranges correspond to each mutation
+        mutStart = mafdt$Start_Position
     )
 
     # get ranges of RNAs
@@ -27,7 +28,8 @@ mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
         mutid = S4Vectors::first(mwrnaPov)$mutid,
         transcript_id = as.character(GenomicRanges::seqnames(flankRanges)),
         start = GenomicRanges::start(flankRanges),
-        end = GenomicRanges::end(flankRanges)
+        end = GenomicRanges::end(flankRanges),
+        mutStart = S4Vectors::first(mwrnaPov)$mutStart
     )
     
     return(flankdt)
@@ -42,7 +44,7 @@ mafLoad <- function(mafdb, .chr, cohort, .vartype, flaggedMuts, minmut) {
     if (flaggedMuts == "no") q <- q %>% dplyr::filter(modelExclude == FALSE) 
 
     mafdt <- q %>%
-        dplyr::select(dplyr::all_of(c("Start_Position", "Transcript_ID", "modelExclude", "Variant_Classification"))) %>%
+        dplyr::select(dplyr::all_of(c("Start_Position", "Transcript_ID"))) %>%
         dplyr::collect()
 
     mafdt[
