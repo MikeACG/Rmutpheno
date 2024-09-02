@@ -3,6 +3,7 @@
 export(aucPvalue)
 export(flankdt2pmutdt)
 export(maf2rnaFlanks)
+export(obsPheno)
 export(phenoPvalue)
 export(redistMuts)
 export(simAUC)

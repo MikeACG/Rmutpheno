@@ -37,10 +37,10 @@ mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
 }
 
 #' @export
-maf2rnaFlanks <- function(mafdb, .chr, cohort, .vartype, gtfdb, ws, minmut, flaggedMuts) {
+maf2rnaFlanks <- function(mafdb, .chr, cohort, .vartype, gtfdb, ws, minmut) {
 
     # load mutations of required type
-    mafdt <- Rmutmod::mafLoad(mafdb, c("Start_Position", "Transcript_ID"), .chr, cohort, .vartype, flaggedMuts)
+    mafdt <- Rmutmod::mafLoad(mafdb, c("Start_Position", "Transcript_ID"), .chr, cohort, .vartype)
     mafdt[
         mafdt[, list("txmut" = .N), by = "Transcript_ID"],
         "txmut" := i.txmut,
@@ -165,35 +165,38 @@ redistMuts <- function(wdtList, n) {
 
 }
 
-#' @export
-phenoPvalue <- function(simdt, mafdir, cohort, .vartype, phenodir, phenocol) {
+phenoLoad <- function(phenodb, .cols, .chr = "all", utx = "all") {
 
-    # get transcripts of interest (obviously, only the simulated ones) and number of simulations
-    utx <- unique(simdt$transcript_id)
-    nsim <- max(simdt$sim)
+    queryChr <- phenodb %>% dplyr::filter(seqnames %in% .chr)
+    if (.chr[1] == "all") queryChr <- phenodb
+
+    queryTx <- queryChr %>% dplyr::filter(transcript_id %in% utx)
+    if (utx[1] == "all") queryTx <- queryChr
+
+    phenodt <- queryTx %>%
+        dplyr::select(dplyr::all_of(.cols)) %>%
+        dplyr::collect()
+    names(phenodt)[ncol(phenodt)] <- "pheno" # last column always assumed the phenotype column
+
+    return(phenodt)
+
+}
+
+#' @export
+obsPheno <- function(utx, mafdb, cohort, .vartype, phenodb, phenocol) {
 
     # load maf observed data of interest
-    mafdb <- arrow::open_dataset(mafdir)
-    mafdt <- mafdb %>% 
-        dplyr::filter(
-            Cohort == cohort,
-            Chromosome == .chr,
-            Transcript_ID %in% utx,
-            Variant_Classification == .vartype
-        ) %>%
-        dplyr::select(
-            dplyr::all_of(c("Start_Position", "Transcript_ID", "Tumor_Sample_Barcode", "codingRef", "codingMut"))
-        ) %>%
-        dplyr::collect()
-
+    mafdt <- Rmutmod::mafLoad(
+        mafdb,
+        c("Start_Position", "Transcript_ID", "Tumor_Sample_Barcode", "codingRef", "codingMut"),
+        cohort = cohort,
+        .vartype = .vartype,
+        utx = utx
+    )
+    
     # load phenotype data of interest
-    phenodb <- arrow::open_dataset(phenodir)
-    phenodt <- phenodb %>%
-        dplyr::filter(seqnames == .chr, transcript_id %in% utx) %>%
-        dplyr::select(dplyr::all_of(c("position.abs", "transcript_id", "wt", "snp", phenocol))) %>%
-        dplyr::collect()
-    names(phenodt)[ncol(phenodt)] <- "pheno"
-
+    phenodt <- phenoLoad(phenodb, c("position.abs", "transcript_id", "wt", "snp", phenocol), utx = utx)
+    
     # get phenotype of observed mutations
     mafdt[
         phenodt,
@@ -208,12 +211,66 @@ phenoPvalue <- function(simdt, mafdir, cohort, .vartype, phenodir, phenocol) {
     obsdt <- mafdt[
         ,
         list(
-            "sumPheno" = sum(pheno),
+            "pheno" = sum(pheno),
             "nmut" = .N,
             "ntumor" = sum(!duplicated(Tumor_Sample_Barcode))
         ),
         by = "Transcript_ID"
     ]
+
+    return(obsdt)
+
+}
+
+#' @export
+phenoPvalue <- function(simdt, mafdir, cohort, .vartype, phenodir, phenocol) {
+
+    # get transcripts of interest (obviously, only the simulated ones) and number of simulations
+    utx <- unique(simdt$transcript_id)
+    nsim <- max(simdt$sim)
+
+    # # load maf observed data of interest
+    # mafdb <- arrow::open_dataset(mafdir)
+    # mafdt <- mafdb %>% 
+    #     dplyr::filter(
+    #         Cohort == cohort,
+    #         Chromosome == .chr,
+    #         Transcript_ID %in% utx,
+    #         Variant_Classification == .vartype
+    #     ) %>%
+    #     dplyr::select(
+    #         dplyr::all_of(c("Start_Position", "Transcript_ID", "Tumor_Sample_Barcode", "codingRef", "codingMut"))
+    #     ) %>%
+    #     dplyr::collect()
+
+    # # load phenotype data of interest
+    # phenodb <- arrow::open_dataset(phenodir)
+    # phenodt <- phenodb %>%
+    #     dplyr::filter(seqnames == .chr, transcript_id %in% utx) %>%
+    #     dplyr::select(dplyr::all_of(c("position.abs", "transcript_id", "wt", "snp", phenocol))) %>%
+    #     dplyr::collect()
+    # names(phenodt)[ncol(phenodt)] <- "pheno"
+
+    # # get phenotype of observed mutations
+    # mafdt[
+    #     phenodt,
+    #     "pheno" := i.pheno,
+    #     on = setNames(
+    #         c("position.abs", "transcript_id", "wt", "snp"),
+    #         c("Start_Position", "Transcript_ID", "codingRef", "codingMut")
+    #     )
+    # ]
+
+    # # sum observed phenotypes by tx
+    # obsdt <- mafdt[
+    #     ,
+    #     list(
+    #         "sumPheno" = sum(pheno),
+    #         "nmut" = .N,
+    #         "ntumor" = sum(!duplicated(Tumor_Sample_Barcode))
+    #     ),
+    #     by = "Transcript_ID"
+    # ]
 
     # build pvalue table by comparing obesrved phenotypes per tx against their simulations
     simdt[obsdt, "obsPheno" := i.sumPheno, on = setNames("Transcript_ID", "transcript_id")]
