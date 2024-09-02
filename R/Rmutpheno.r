@@ -76,32 +76,9 @@ maf2rnaFlanks <- function(mafdb, .chr, cohort, .vartype, gtfdb, ws, minmut, flag
 #' @export
 flankdt2pmutdt <- function(.chr, flankdt, rmutmod, .vartype, vardir, phenodir, phenocol) {
 
-    nflank <- floor(Rmutmod::kGet(rmutmod) / 2)
-    kmerdt <- Rmutmod::ranges2kmerdt(
-        flankdt$start,
-        flankdt$end,
-        .chr,
-        nflank,
-        setNames(
-            Biostrings::readDNAStringSet(paste0(Rmutmod::genomedirGet(rmutmod), .chr, ".fasta")),
-            .chr
-        )
-    )
+    pmutdt <- Rmutmod::mutdesign(rmutmod, flankdt, .chr)
     flankdt[, "rangeid" := 1:nrow(flankdt)]
-    kmerdt[flankdt, ':=' ("mutid" = i.mutid, "transcript_id" = i.transcript_id), on = "rangeid"]
-
-    icenter <- nflank + 1
-    kmerdt[, "ref" := substr(kmer, icenter, icenter)]
-
-    pmutdt <- kmerdt[rep(1:nrow(kmerdt), each = 3)]
-    pmutdt[
-        ,
-        "mut" := unlist(
-            list("C" = c("A", "G", "T"), "T" = c("A", "C", "G"))[kmerdt$ref],
-            recursive = FALSE,
-            use.names = FALSE
-        )
-    ]
+    pmutdt[flankdt, ':=' ("mutid" = i.mutid, "transcript_id" = i.transcript_id), on = "rangeid"]
 
     annotateVartype(pmutdt, vardir, .chr)
     pmutdt <- pmutdt[vartype == .vartype]
@@ -136,7 +113,7 @@ annotateVartype <- function(pmutdt, vardir, .chr) {
         "vartype" := i.type,
         on = setNames(
             c("position", "transcript_id", "pyrimidine", "pyrimidineMut"),
-            c("position", "transcript_id", "ref", "mut")
+            c("start", "transcript_id", "ref", "mut")
         )
     ]
 
@@ -168,7 +145,7 @@ annotatePheno <- function(pmutdt, phenodir, .chr, phenocol) {
         "pheno" := i.pheno,
         on = setNames(
             c("position.abs", "transcript_id", "wt", "snp"),
-            c("position", "transcript_id", "ref", "mut")
+            c("start", "transcript_id", "ref", "mut")
         )
     ]
 
