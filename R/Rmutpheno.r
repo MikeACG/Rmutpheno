@@ -62,10 +62,12 @@ maf2rnaFlanks <- function(mafdb, .chr, cohort, .vartype, gtfdb, ws, minmut) {
     }
 
     # get exon level gtf
-    gtfdt <- gtfdb %>% 
-        dplyr::filter(Chromosome == .chr, transcript_id %in% unique(mafdt$Transcript_ID)) %>%
-        dplyr::select(dplyr::all_of(c("Chromosome", "Feature", "Start_Position", "End_Position", "Strand", "transcript_id"))) %>%
-        dplyr::collect()
+    gtfdt <- gtfTools::gtfLoad(
+        gtfdb,
+        c("Chromosome", "Feature", "Start_Position", "End_Position", "Strand", "transcript_id"),
+        .chr,
+        unique(mafdt$Transcript_ID)
+    )
     rnaGtf <- gtfTools::rnaify(gtfdt)
 
     # get redistribution windows
