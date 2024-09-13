@@ -7,7 +7,7 @@ mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
     mwRanges <- GenomicRanges::GRanges(
         mafdt$Transcript_ID,
         IRanges::IRanges(mafdt$Start_Position - ws, mafdt$Start_Position + ws),
-        mutid = 1:nrow(mafdt), # identifier to track which resulting ranges correspond to each mutation
+        mutid = mafdt$id, # identifier to track which resulting ranges correspond to each mutation
         mutStart = mafdt$Start_Position
     )
 
@@ -40,7 +40,7 @@ mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
 maf2rnaFlanks <- function(mafdb, .chr, cohort, .vartype, gtfdb, ws, minmut) {
 
     # load mutations of required type
-    mafdt <- Rmutmod::mafLoad(mafdb, c("Start_Position", "Transcript_ID"), .chr, cohort, .vartype)
+    mafdt <- Rmutmod::mafLoad(mafdb, c("Start_Position", "Transcript_ID", "id"), .chr, cohort, .vartype)
     mafdt[
         mafdt[, list("txmut" = .N), by = "Transcript_ID"],
         "txmut" := i.txmut,
