@@ -86,14 +86,8 @@ flankdt2pmutdt <- function(.chr, flankdt, rmutmod, .vartype, vardir, phenodir, p
     pmutdt <- pmutdt[vartype == .vartype]
     annotatePheno(pmutdt, phenodir, .chr, phenocol)
 
-    # make sure all sites of each transcript have non-missing phenotype
-    pmutdt[
-        pmutdt[, list("allTxPheno" = !any(is.na(pheno))), by = "transcript_id"],
-        "allTxPheno" := i.allTxPheno,
-        on = "transcript_id"
-    ]
-    pmutdt <- pmutdt[allTxPheno == TRUE]
-    pmutdt[, allTxPheno := NULL]
+    # raise warning if missing data for some mutations
+    if (any(is.na(pmutdt$pheno))) warning("At least 1 missing phenotype for possible mutations in queried regions")
 
     Rmutmod::mutpredict(rmutmod, pmutdt)
     
@@ -156,12 +150,27 @@ annotatePheno <- function(pmutdt, phenodir, .chr, phenocol) {
 }
 
 #' @export
-redistMuts <- function(wdtList, n) {
+redistMut <- function(.dt, n) {
 
-    wsimList <- lapply(
-        wdtList,
-        function(.dt) .dt$pheno[.Internal(sample(nrow(.dt), n, TRUE, .dt$mutRate / sum(.dt$mutRate)))]
-    )
+    smutdt <- .dt[
+        .Internal(
+            sample(
+                nrow(.dt),
+                n,
+                TRUE,
+                .dt$mutRate / sum(.dt$mutRate)
+            )
+        ),
+        .SD,
+        .SDcols = c("pheno", "transcript_id")
+    ]
+
+}
+
+#' @export
+redistTxMuts <- function(wdtList, n) {
+
+    wsimList <- lapply(wdtList, function(.dt) redistMut(.dt, n)$pheno)
 
     return(colSums(do.call(rbind, wsimList)))
 
@@ -188,7 +197,7 @@ phenoLoad <- function(phenodb, .cols, .chr = "all", utx = "all") {
 obsPheno <- function(utx, mafdb, cohort, .vartype, phenodb, phenocol) {
 
     # load maf observed data of interest
-    mafdt <- Rmutmod::mafLoad(
+    obsdt <- Rmutmod::mafLoad(
         mafdb,
         c("Start_Position", "Transcript_ID", "Tumor_Sample_Barcode", "codingRef", "codingMut"),
         cohort = cohort,
@@ -200,7 +209,7 @@ obsPheno <- function(utx, mafdb, cohort, .vartype, phenodb, phenocol) {
     phenodt <- phenoLoad(phenodb, c("position.abs", "transcript_id", "wt", "snp", phenocol), utx = utx)
     
     # get phenotype of observed mutations
-    mafdt[
+    obsdt[
         phenodt,
         "pheno" := i.pheno,
         on = setNames(
@@ -209,8 +218,15 @@ obsPheno <- function(utx, mafdb, cohort, .vartype, phenodb, phenocol) {
         )
     ]
 
+    return(obsdt)
+
+}
+
+#' @export
+txObsPheno <- function(obsdt) {
+
     # sum observed phenotypes by tx
-    obsdt <- mafdt[
+    txobsdt <- obsdt[
         ,
         list(
             "pheno" = sum(pheno),
@@ -220,7 +236,7 @@ obsPheno <- function(utx, mafdb, cohort, .vartype, phenodb, phenocol) {
         by = "Transcript_ID"
     ]
 
-    return(obsdt)
+    return(txobsdt)
 
 }
 
