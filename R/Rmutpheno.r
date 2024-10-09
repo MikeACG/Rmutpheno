@@ -56,6 +56,7 @@ flankdt2pmutdt <- function(.chr, flankdt, rmutmod, .vartype, vardir, phenodir, p
 
 }
 
+#' @export
 annotateVartype <- function(pmutdt, vardir, .chr) {
 
     vardb <- arrow::open_dataset(vardir)
