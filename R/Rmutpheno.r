@@ -1,14 +1,14 @@
 #' @import data.table
 #' @importFrom dplyr %>%
 
-mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
+#' @export
+maf2rnaFlanks <- function(mafdt, rnaGtf, ws) {
 
     # get ranges of windows to the flank of mutations
     mwRanges <- GenomicRanges::GRanges(
         mafdt$Transcript_ID,
         IRanges::IRanges(mafdt$Start_Position - ws, mafdt$Start_Position + ws),
-        mutid = mafdt$id, # identifier to track which resulting ranges correspond to each mutation
-        mutStart = mafdt$Start_Position
+        mutid = mafdt$id # identifier to track which resulting ranges correspond to each mutation
     )
 
     # get ranges of RNAs
@@ -28,50 +28,10 @@ mut2rnaFlanks <- function(mafdt, rnaGtf, ws) {
         mutid = S4Vectors::first(mwrnaPov)$mutid,
         transcript_id = as.character(GenomicRanges::seqnames(flankRanges)),
         start = GenomicRanges::start(flankRanges),
-        end = GenomicRanges::end(flankRanges),
-        mutStart = S4Vectors::first(mwrnaPov)$mutStart
+        end = GenomicRanges::end(flankRanges)
     )
     
     return(flankdt)
-
-}
-
-#' @export
-maf2rnaFlanks <- function(mafdb, .chr, cohort, .vartype, gtfdb, ws, minmut) {
-
-    # load mutations of required type
-    mafdt <- Rmutmod::mafLoad(mafdb, c("Start_Position", "Transcript_ID", "id"), .chr, cohort, .vartype)
-    mafdt[
-        mafdt[, list("txmut" = .N), by = "Transcript_ID"],
-        "txmut" := i.txmut,
-        on = "Transcript_ID"
-    ]
-    mafdt <- mafdt[txmut >= minmut]
-
-    if (nrow(mafdt) == 0L) {
-
-        flankdt <- data.table::data.table(
-            mutid = integer(0),
-            transcript_id = character(0),
-            start = integer(0),
-            end = integer(0)
-        )
-
-        return(flankdt)
-
-    }
-
-    # get exon level gtf
-    gtfdt <- gtfTools::gtfLoad(
-        gtfdb,
-        c("Chromosome", "Feature", "Start_Position", "End_Position", "Strand", "transcript_id"),
-        .chr,
-        unique(mafdt$Transcript_ID)
-    )
-    rnaGtf <- gtfTools::rnaify(gtfdt)
-
-    # get redistribution windows
-    return(mut2rnaFlanks(mafdt, rnaGtf, ws))
 
 }
 
