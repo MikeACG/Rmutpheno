@@ -111,20 +111,75 @@ annotatePheno <- function(pmutdt, phenodir, .chr, phenocol) {
 }
 
 #' @export
-redistMut <- function(.dt, n) {
+redistMut <- function(x, pmutdt, n, .cols) {
 
-    smutdt <- .dt[
-        .Internal(
-            sample(
-                nrow(.dt),
-                n,
-                TRUE,
-                .dt$mutRate / sum(.dt$mutRate)
-            )
-        ),
-        .SD,
-        .SDcols = c("pheno", "transcript_id")
+   UseMethod("redistMut", x)
+
+}
+
+redistMut.MutMatrix <- function(mutmatrix, pmutdt, n, .cols) {
+
+    simdt <- redistMutMean(pmutdt, n, .cols)
+
+    return(simdt)
+
+}
+
+#' @export
+redistMut.MutGLMMTMB <- function(mutGLMMTMB, pmutdt, n, .cols) {
+
+    model <- Rmutmod::modelGet(mutGLMMTMB)
+    simdt <- switch(
+        model$modelInfo$family$family,
+        poisson = redistMutMean(pmutdt, n, .cols),
+        nbinom2 = redistMutDisp(model, pmutdt, n, .cols)
+    )
+
+    return(simdt)
+
+}
+
+#' @export
+redistMutMean <- function(pmutdt, n, .cols) {
+
+    simdt <- pmutdt[
+        ,
+        .SD[.Internal(sample(.N, n, TRUE, p))],
+        .SDcols = .cols,
+        by = "mutid"
     ]
+
+    return(simdt)
+
+}
+
+rdisp <- function(mu, .theta, n, normz = FALSE) {
+
+    S <- matrix(rgamma(length(mu) * n, .theta), nrow = length(mu), ncol = n) / .theta * mu
+    if (normz) S <- S / matrix(rep(colSums(S), each = nrow(S)), nrow = nrow(S), ncol = ncol(S))
+
+    return(S)
+
+}
+
+#' @export
+redistMutDisp <- function(model, pmutdt, n, .cols) {
+
+    .theta <- glmmTMB::sigma(model)
+    simdt <- pmutdt[
+        ,
+        .SD[
+            apply(
+                rdisp(mutRate, .theta, n, TRUE),
+                2,
+                function(.p) .Internal(sample(length(.p), 1, TRUE, .p))
+            )
+        ],
+        .SDcols = .cols,
+        by = "mutid"
+    ]
+
+    return(simdt)
 
 }
 
