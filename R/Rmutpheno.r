@@ -117,6 +117,7 @@ redistMut <- function(x, pmutdt, n, .cols) {
 
 }
 
+#' @export
 redistMut.MutMatrix <- function(mutmatrix, pmutdt, n, .cols) {
 
     simdt <- redistMutMean(pmutdt, n, .cols)
