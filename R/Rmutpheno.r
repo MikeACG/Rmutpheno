@@ -36,30 +36,19 @@ maf2rnaFlanks <- function(mafdt, rnaGtf, ws) {
 }
 
 #' @export
-flankdt2pmutdt <- function(.chr, flankdt, rmutmod, .vartype, vardir, phenodir, phenocol) {
+flankdt2pmutdt <- function(.chr, flankdt, genomeDir, k, fdirs) {
 
-    pmutdt <- Rmutmod::mutdesign(rmutmod, flankdt, .chr)
+    pmutdt <- mutdesign(.chr, flankdt, genomeDir, k, fdirs)
     flankdt[, "rangeid" := 1:nrow(flankdt)]
     pmutdt[flankdt, ':=' ("mutid" = i.mutid, "transcript_id" = i.transcript_id), on = "rangeid"]
 
-    annotateVartype(pmutdt, vardir, .chr)
-    pmutdt <- pmutdt[vartype == .vartype]
-    annotatePheno(pmutdt, phenodir, .chr, phenocol)
-
-    # raise warning if missing data for some mutations
-    if (any(is.na(pmutdt$pheno))) warning("At least 1 missing phenotype for possible mutations in queried regions")
-
-    Rmutmod::mutpredict(rmutmod, pmutdt)
-    
-    flankdt[, "rangeid" := NULL]
     return(pmutdt)
 
 }
 
 #' @export
-annotateVartype <- function(pmutdt, vardir, .chr) {
+annotateVartype <- function(.chr, pmutdt, vardb) {
 
-    vardb <- arrow::open_dataset(vardir)
     vardt <- vardb %>%
         dplyr::filter(seqnames == .chr) %>%
         dplyr::select(dplyr::all_of(c("position", "transcript_id", "pyrimidine", "pyrimidineMut", "type"))) %>%
@@ -78,9 +67,9 @@ annotateVartype <- function(pmutdt, vardir, .chr) {
 
 }
 
-annotatePheno <- function(pmutdt, phenodir, .chr, phenocol) {
+#' @export
+annotatePheno <- function(.chr, pmutdt, phenodb, phenocol, errorOnMiss = TRUE) {
 
-    phenodb <- arrow::open_dataset(phenodir)
     phenodt <- phenodb %>%
         dplyr::filter(seqnames == .chr) %>%
         dplyr::select(dplyr::all_of(c("position.abs", "transcript_id", "wt", "snp", phenocol))) %>%
@@ -106,90 +95,68 @@ annotatePheno <- function(pmutdt, phenodir, .chr, phenocol) {
         )
     ]
 
+    # handle missing data
+    if (any(is.na(pmutdt$pheno))) {
+
+        if (errorOnMiss) {
+
+            stop("At least 1 missing phenotype for possible mutations in queried regions")
+
+        } else {
+
+            warning("At least 1 missing phenotype for possible mutations in queried regions")
+
+        }
+
+    }  
+
     return()
 
 }
 
 #' @export
-redistMut <- function(x, pmutdt, n, .cols) {
+redistMut <- function(x, pmutdt, .cols) {
 
    UseMethod("redistMut", x)
 
 }
 
 #' @export
-redistMut.MutMatrix <- function(mutmatrix, pmutdt, n, .cols) {
+redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
 
-    simdt <- redistMutMean(pmutdt, n, .cols)
+    # separate mutations by mononucleotide substitution type
+    pmutList <- split(pmutdt, by = c("ref", "mut"))
+    names(pmutList) <- sub("[.]", "_", names(pmutList))
 
-    return(simdt)
-
-}
-
-#' @export
-redistMut.MutGLMMTMB <- function(mutGLMMTMB, pmutdt, n, .cols) {
-
-    model <- Rmutmod::modelGet(mutGLMMTMB)
-    simdt <- switch(
-        model$modelInfo$family$family,
-        poisson = redistMutMean(pmutdt, n, .cols),
-        nbinom2 = redistMutDisp(model, pmutdt, n, .cols)
+    # get linear predictor of mutation density per mutation type per simulation
+    LPS <- mapply(
+        linearPredictor,
+        simCoefList[names(pmutList)],
+        pmutList,
+        SIMPLIFY = FALSE
     )
 
-    return(simdt)
+    # concatenate mutation type predictions, convert to response scale 
+    LPS <- exp(do.call(rbind, LPS))
+    .n <- ncol(LPS)
 
-}
+    # redistribution simulation by window
+    LPS <- lapply(
+        split(1:nrow(LPS), wdt$mutid[as.integer(rownames(LPS))]),
+        function(idxs) LPS[idxs, , drop = FALSE]
+    )
+    LPS <- lapply(LPS, function(M) M / colSums(M))
+    S <- lapply(
+        LPS,
+        function(M) apply(M, 2, function(p) .Internal(sample(nrow(M), 1, TRUE, p)))
+    )
 
-#' @export
-redistMutMean <- function(pmutdt, n, .cols) {
-
-    simdt <- pmutdt[
-        ,
-        .SD[.Internal(sample(.N, n, TRUE, p))],
-        .SDcols = .cols,
-        by = "mutid"
-    ]
-
-    return(simdt)
-
-}
-
-rdisp <- function(mu, .theta, n, normz = FALSE) {
-
-    S <- matrix(rgamma(length(mu) * n, .theta), nrow = length(mu), ncol = n) / .theta * mu
-    if (normz) S <- S / matrix(rep(colSums(S), each = nrow(S)), nrow = nrow(S), ncol = ncol(S))
-
-    return(S)
-
-}
-
-#' @export
-redistMutDisp <- function(model, pmutdt, n, .cols) {
-
-    .theta <- glmmTMB::sigma(model)
-    simdt <- pmutdt[
-        ,
-        .SD[
-            apply(
-                rdisp(mutRate, .theta, n, TRUE),
-                2,
-                function(.p) .Internal(sample(length(.p), 1, TRUE, .p))
-            )
-        ],
-        .SDcols = .cols,
-        by = "mutid"
-    ]
+    # return simulated indices of pmutdt
+    s <- mapply(function(M, idxs) rownames(M)[idxs], LPS, S, SIMPLIFY = FALSE)
+    simdt <- pmutdt[as.integer(unlist(s)), .SD, .SDcols = .cols]
+    simdt[, "sim" := rep(1:.n, length(s))]
 
     return(simdt)
-
-}
-
-#' @export
-redistTxMuts <- function(wdtList, n) {
-
-    wsimList <- lapply(wdtList, function(.dt) redistMut(.dt, n)$pheno)
-
-    return(colSums(do.call(rbind, wsimList)))
 
 }
 
