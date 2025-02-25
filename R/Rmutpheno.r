@@ -130,7 +130,7 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
 
     # get linear predictor of mutation density per mutation type per simulation
     LPS <- mapply(
-        linearPredictor,
+        Rmutmod::linearPredictor,
         simCoefList[names(pmutList)],
         pmutList,
         SIMPLIFY = FALSE
