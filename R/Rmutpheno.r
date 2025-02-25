@@ -115,7 +115,7 @@ annotatePheno <- function(.chr, pmutdt, phenodb, phenocol, errorOnMiss = TRUE) {
 }
 
 #' @export
-redistMut <- function(x, pmutdt, .cols) {
+redistMut <- function(x, ...) {
 
    UseMethod("redistMut", x)
 
@@ -131,14 +131,13 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
     # get linear predictor of mutation density per mutation type per simulation
     LPS <- mapply(
         Rmutmod::linearPredictor,
-        simCoefList[names(pmutList)],
+        multiMAFglmmTMBsim$sims[names(pmutList)],
         pmutList,
         SIMPLIFY = FALSE
     )
 
     # concatenate mutation type predictions, convert to response scale 
     LPS <- exp(do.call(rbind, LPS))
-    .n <- ncol(LPS)
 
     # redistribution simulation by window
     LPS <- lapply(
@@ -154,7 +153,7 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
     # return simulated indices of pmutdt
     s <- mapply(function(M, idxs) rownames(M)[idxs], LPS, S, SIMPLIFY = FALSE)
     simdt <- pmutdt[as.integer(unlist(s)), .SD, .SDcols = .cols]
-    simdt[, "sim" := rep(1:.n, length(s))]
+    simdt[, "sim" := rep(1:.n, length(multiMAFglmmTMBsim$nsims))]
 
     return(simdt)
 
