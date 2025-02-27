@@ -141,7 +141,7 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
 
     # redistribution simulation by window
     LPS <- lapply(
-        split(1:nrow(LPS), wdt$mutid[as.integer(rownames(LPS))]),
+        split(1:nrow(LPS), pmutdt$mutid[as.integer(rownames(LPS))]),
         function(idxs) LPS[idxs, , drop = FALSE]
     )
     LPS <- lapply(LPS, function(M) M / colSums(M))
@@ -153,7 +153,7 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
     # return simulated indices of pmutdt
     s <- mapply(function(M, idxs) rownames(M)[idxs], LPS, S, SIMPLIFY = FALSE)
     simdt <- pmutdt[as.integer(unlist(s)), .SD, .SDcols = .cols]
-    simdt[, "sim" := rep(1:.n, length(multiMAFglmmTMBsim$nsims))]
+    simdt[, "sim" := rep(1:multiMAFglmmTMBsim$nsims, length(s))]
 
     return(simdt)
 
