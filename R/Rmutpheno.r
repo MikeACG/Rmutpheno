@@ -144,14 +144,14 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
         split(1:nrow(LPS), pmutdt$mutid[as.integer(rownames(LPS))]),
         function(idxs) LPS[idxs, , drop = FALSE]
     )
-    LPS <- lapply(LPS, function(M) M / colSums(M))
+    LPS <- lapply(LPS, function(M) t(M) / colSums(M))
     S <- lapply(
         LPS,
-        function(M) apply(M, 2, function(p) .Internal(sample(nrow(M), 1, TRUE, p)))
+        function(M) apply(M, 1, function(p) .Internal(sample(length(p), 1, TRUE, p)))
     )
 
     # return simulated indices of pmutdt
-    s <- mapply(function(M, idxs) rownames(M)[idxs], LPS, S, SIMPLIFY = FALSE)
+    s <- mapply(function(M, idxs) colnames(M)[idxs], LPS, S, SIMPLIFY = FALSE)
     simdt <- pmutdt[as.integer(unlist(s)), .SD, .SDcols = .cols]
     simdt[, "sim" := rep(1:multiMAFglmmTMBsim$nsims, length(s))]
 
