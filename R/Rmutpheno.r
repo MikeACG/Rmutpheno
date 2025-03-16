@@ -36,9 +36,9 @@ maf2rnaFlanks <- function(mafdt, rnaGtf, ws) {
 }
 
 #' @export
-flankdt2pmutdt <- function(.chr, flankdt, genomeDir, k, fdirs) {
+flankdt2pmutdt <- function(rmutmod, flankdt, .chr) {
 
-    pmutdt <- mutdesign(.chr, flankdt, genomeDir, k, fdirs)
+    pmutdt <- Rmutmod::mutdesign(rmutmod, flankdt, .chr)
     flankdt[, "rangeid" := 1:nrow(flankdt)]
     pmutdt[flankdt, ':=' ("mutid" = i.mutid, "transcript_id" = i.transcript_id), on = "rangeid"]
 
