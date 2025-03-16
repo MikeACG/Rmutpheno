@@ -122,6 +122,33 @@ redistMut <- function(x, ...) {
 }
 
 #' @export
+redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
+
+    # get linear predictor of mutation density
+    LPS <- exp(Rmutmod:::linearPredictor(monoMAFglmmTMBsim, pmutdt))
+
+    # redistribution simulation by window
+    LPS <- lapply(
+        split(1:nrow(LPS), pmutdt$mutid),
+        function(idxs) LPS[idxs, , drop = FALSE]
+    )
+    LPS <- lapply(LPS, function(M) t(M) / colSums(M))
+    S <- lapply(
+        LPS,
+        function(M) apply(M, 1, function(p) .Internal(sample(length(p), 1, TRUE, p)))
+    )
+
+    # return simulated indices of pmutdt
+    s <- mapply(function(M, idxs) colnames(M)[idxs], LPS, S, SIMPLIFY = FALSE)
+    simdt <- pmutdt[as.integer(unlist(s)), .SD, .SDcols = .cols]
+    simdt[, "sim" := rep(1:ncol(monoMAFglmmTMBsim$fixef), length(s))]
+
+    return(simdt)
+
+}
+
+
+#' @export
 redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
 
     # separate mutations by mononucleotide substitution type
