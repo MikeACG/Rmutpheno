@@ -125,28 +125,28 @@ redistMut <- function(x, ...) {
 redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
 
     # get linear predictor of mutation density
-    LPS <- Rmutmod:::linearPredictor(monoMAFglmmTMBsim, pmutdt)
+    LPS <- exp(Rmutmod:::linearPredictor(monoMAFglmmTMBsim, pmutdt))
 
-    # normalize the linear predictors of mutations for each simulation to sum of 1 in the response scale avoiding overflows
-    LPS <- lapply(
-        split(1:nrow(LPS), pmutdt$mutid),
-        function(idxs) LPS[idxs, , drop = FALSE]
-    )
-    maxs <- lapply(LPS, function(M) apply(M, 2, max))
-    minusc <- mapply(
-        function(M, m) M - matrix(rep(m, each = nrow(M)), nrow = nrow(M), ncol = ncol(M)),
-        LPS,
-        maxs,
-        SIMPLIFY = FALSE
-    )
-    logsumexp <- lapply(minusc, function(M) log(colSums(exp(M))))
-    LPS <- mapply(
-        function(M, lse) exp(M - matrix(rep(lse, each = nrow(M)), nrow = nrow(M), ncol = ncol(M))),
-        LPS,
-        logsumexp,
-        SIMPLIFY = FALSE
-    )
-    #LPS <- lapply(LPS, function(M) t(M) / colSums(M))
+    # # normalize the linear predictors of mutations for each simulation to sum of 1 in the response scale avoiding overflows
+    # LPS <- lapply(
+    #     split(1:nrow(LPS), pmutdt$mutid),
+    #     function(idxs) LPS[idxs, , drop = FALSE]
+    # )
+    # maxs <- lapply(LPS, function(M) apply(M, 2, max))
+    # minusc <- mapply(
+    #     function(M, m) M - matrix(rep(m, each = nrow(M)), nrow = nrow(M), ncol = ncol(M)),
+    #     LPS,
+    #     maxs,
+    #     SIMPLIFY = FALSE
+    # )
+    # logsumexp <- lapply(minusc, function(M) log(colSums(exp(M))))
+    # LPS <- mapply(
+    #     function(M, lse) exp(M - matrix(rep(lse, each = nrow(M)), nrow = nrow(M), ncol = ncol(M))),
+    #     LPS,
+    #     logsumexp,
+    #     SIMPLIFY = FALSE
+    # )
+    LPS <- lapply(LPS, function(M) t(M) / colSums(M))
 
     # redistribution simulation by window
     S <- lapply(
