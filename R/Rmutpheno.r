@@ -124,14 +124,14 @@ redistMut <- function(x, ...) {
 #' @export
 redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
 
-    # get linear predictor of mutation density
+    # get linear predictor of mutation density for each window
     LPS <- exp(Rmutmod:::linearPredictor(monoMAFglmmTMBsim, pmutdt))
+    LPS <- lapply(
+        split(1:nrow(LPS), pmutdt$mutid),
+        function(idxs) LPS[idxs, , drop = FALSE]
+    )
 
     # # normalize the linear predictors of mutations for each simulation to sum of 1 in the response scale avoiding overflows
-    # LPS <- lapply(
-    #     split(1:nrow(LPS), pmutdt$mutid),
-    #     function(idxs) LPS[idxs, , drop = FALSE]
-    # )
     # maxs <- lapply(LPS, function(M) apply(M, 2, max))
     # minusc <- mapply(
     #     function(M, m) M - matrix(rep(m, each = nrow(M)), nrow = nrow(M), ncol = ncol(M)),
