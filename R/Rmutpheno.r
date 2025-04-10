@@ -157,7 +157,7 @@ redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
     # return simulated indices of pmutdt
     s <- mapply(function(M, idxs) colnames(M)[idxs], LPS, S, SIMPLIFY = FALSE)
     simdt <- pmutdt[as.integer(unlist(s)), .SD, .SDcols = .cols]
-    simdt[, "sim" := rep(1:ncol(monoMAFglmmTMBsim$fixef), length(s))]
+    simdt[, "sim" := rep(1:length(s[[1]]), length(s))]
 
     return(simdt)
 
