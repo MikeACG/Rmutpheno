@@ -125,7 +125,7 @@ redistMut <- function(x, ...) {
 redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
 
     # get linear predictor of mutation density for each window
-    LPS <- exp(Rmutmod:::linearPredictor(monoMAFglmmTMBsim, pmutdt))
+    LPS <- Rmutmod:::linearPredictor(monoMAFglmmTMBsim, pmutdt)
     LPS <- lapply(
         split(1:nrow(LPS), pmutdt$mutid),
         function(idxs) LPS[idxs, , drop = FALSE]
