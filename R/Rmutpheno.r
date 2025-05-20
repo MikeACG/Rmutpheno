@@ -179,7 +179,7 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
     )
 
     # concatenate mutation type predictions, convert to response scale 
-    LPS <- exp(do.call(rbind, LPS))
+    LPS <- do.call(rbind, LPS)
 
     # redistribution simulation by window
     LPS <- lapply(
