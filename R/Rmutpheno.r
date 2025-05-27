@@ -115,37 +115,38 @@ annotatePheno <- function(.chr, pmutdt, phenodb, phenocol, errorOnMiss = TRUE) {
 }
 
 #' @export
-redistMut <- function(x, ...) {
+sampleMut <- function(x, pmutdt, .cols) {
 
-   UseMethod("redistMut", x)
+   UseMethod("sampleMut", x)
 
 }
 
 #' @export
-redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
+sampleMut.numeric <- function(mu, pmutdt, .cols) {
 
-    # get linear predictor of mutation density for each window
-    LPS <- Rmutmod:::linearPredictor(monoMAFglmmTMBsim, pmutdt)
+    pmutdt[, "p" := mu]
+    pmutdt[, "pnorm" := p / sum(p), by = "mutid"]
+
+    n <- attr(mu, "n")
+    simdt <- pmutdt[
+        , .SD[.Internal(sample(.N, n, TRUE, pnorm))],
+        by = "mutid",
+        .SDcols = setdiff(.cols, "mutid")
+    ]
+    simdt[, "sim" := rep(1:n, length(unique(pmutdt$mutid)))]
+
+    pmutdt[, ':=' ("p" = NULL, "pnorm" = NULL)]
+    return(simdt)
+
+}
+
+#' @export
+sampleMut.matrix <- function(mu, pmutdt, .cols) {
+
     LPS <- lapply(
-        split(1:nrow(LPS), pmutdt$mutid),
-        function(idxs) LPS[idxs, , drop = FALSE]
+        split(1:nrow(mu), pmutdt$mutid),
+        function(idxs) mu[idxs, , drop = FALSE]
     )
-
-    # # normalize the linear predictors of mutations for each simulation to sum of 1 in the response scale avoiding overflows
-    # maxs <- lapply(LPS, function(M) apply(M, 2, max))
-    # minusc <- mapply(
-    #     function(M, m) M - matrix(rep(m, each = nrow(M)), nrow = nrow(M), ncol = ncol(M)),
-    #     LPS,
-    #     maxs,
-    #     SIMPLIFY = FALSE
-    # )
-    # logsumexp <- lapply(minusc, function(M) log(colSums(exp(M))))
-    # LPS <- mapply(
-    #     function(M, lse) exp(M - matrix(rep(lse, each = nrow(M)), nrow = nrow(M), ncol = ncol(M))),
-    #     LPS,
-    #     logsumexp,
-    #     SIMPLIFY = FALSE
-    # )
     LPS <- lapply(LPS, function(M) t(M) / colSums(M))
 
     # redistribution simulation by window
@@ -159,6 +160,24 @@ redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
     simdt <- pmutdt[as.integer(unlist(s)), .SD, .SDcols = .cols]
     simdt[, "sim" := rep(1:length(s[[1]]), length(s))]
 
+    return(simdt)
+
+}
+
+#' @export
+redistMut <- function(x, ...) {
+
+   UseMethod("redistMut", x)
+
+}
+
+#' @export
+redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
+
+    # get linear predictor of mutation density for each window
+    mu <- Rmutmod:::linearPredictor(monoMAFglmmTMBsim, pmutdt)
+    simdt <- sampleMut(mu, pmutdt, .cols)
+    
     return(simdt)
 
 }
