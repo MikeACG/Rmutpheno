@@ -172,6 +172,18 @@ redistMut <- function(x, ...) {
 }
 
 #' @export
+redistMut.MutMatrixSim <- function(mutMatrixSim, pmutdt, .cols) {
+
+    pmutdt[mutMatrixSim$fixef, "p" := i.density, on = mutMatrixSim$features]
+    mu <- pmutdt$p
+    attr(mu, "n") <- mutMatrixSim$n
+    simdt <- sampleMut(mu, pmutdt, .cols)
+    
+    return(simdt)
+
+}
+
+#' @export
 redistMut.MonoMAFglmmTMBsim <- function(monoMAFglmmTMBsim, pmutdt, .cols) {
 
     # get linear predictor of mutation density for each window
