@@ -2,6 +2,7 @@
 
 S3method(redistMut,MonoMAFglmmTMBsim)
 S3method(redistMut,MultiMAFglmmTMBsim)
+S3method(redistMut,MutMatrixSim)
 S3method(sampleMut,matrix)
 S3method(sampleMut,numeric)
 export(annotatePheno)
