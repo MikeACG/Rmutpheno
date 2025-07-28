@@ -174,7 +174,7 @@ redistMut <- function(x, ...) {
 #' @export
 redistMut.MutMatrixSim <- function(mutMatrixSim, pmutdt, .cols) {
 
-    pmutdt[mutMatrixSim$fixef, "p" := i.density, on = mutMatrixSim$features]
+    pmutdt[mutMatrixSim$fixef, "p" := i.density, on = c(mutMatrixSim$features, "mut")]
     mu <- pmutdt$p
     attr(mu, "n") <- mutMatrixSim$n
     simdt <- sampleMut(mu, pmutdt, .cols)
