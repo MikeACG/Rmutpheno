@@ -199,6 +199,7 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
 
     # separate mutations by mononucleotide substitution type
     pmutList <- split(pmutdt, by = c("ref", "mut"))
+    names(pmutList) <- sub("[.]", "_", names(pmutList))
 
     # get linear predictor of mutation density per mutation type per simulation
     LPS <- mapply(
