@@ -214,9 +214,10 @@ redistMut.MultiMAFglmmTMBsim <- function(multiMAFglmmTMBsim, pmutdt, .cols) {
         unlist(LPS, recursive = FALSE, use.names = FALSE),
         unlist(lapply(pmutList, function(.dt) .dt$id), recursive = FALSE, use.names = FALSE)
     )
-    attr(mu, "n") <- attr(LPS[[1]], "n")
+    n <- attr(LPS[[1]], "n")
     rm(pmutList, LPS)
     mu <- mu[as.character(pmutdt$id)]
+    attr(mu, "n") <- n
     simdt <- sampleMut(mu, pmutdt, .cols)
 
     return(simdt)
