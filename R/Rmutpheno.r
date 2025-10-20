@@ -51,12 +51,12 @@ annotateVartype <- function(.chr, pmutdt, vardb) {
 
     vardt <- vardb %>%
         dplyr::filter(seqnames == .chr) %>%
-        dplyr::select(dplyr::all_of(c("position", "transcript_id", "pyrimidine", "pyrimidineMut", "type"))) %>%
+        dplyr::select(dplyr::all_of(c("position", "transcript_id", "pyrimidine", "pyrimidineMut", "type", "codon", "mutCodon"))) %>%
         dplyr::collect()
     
     pmutdt[
         vardt,
-        "vartype" := i.type,
+        ':=' ("vartype" = i.type, "codon" = i.codon, "mutCodon" = i.mutCodon),
         on = setNames(
             c("position", "transcript_id", "pyrimidine", "pyrimidineMut"),
             c("start", "transcript_id", "ref", "mut")
