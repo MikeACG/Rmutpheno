@@ -35,6 +35,7 @@ maf2rnaFlanks <- function(mafdt, rnaGtf, ws) {
 
 }
 
+
 #' @export
 flankdt2pmutdt <- function(rmutmod, flankdt, .chr) {
 
